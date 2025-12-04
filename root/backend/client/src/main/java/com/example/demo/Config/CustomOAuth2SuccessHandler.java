@@ -1,0 +1,52 @@
+package com.example.demo.Config;
+
+
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.stereotype.Component;
+
+
+import java.io.IOException;
+
+@Component
+public class CustomOAuth2SuccessHandler implements AuthenticationSuccessHandler {
+
+    private final JwtService jwtService;
+
+    public CustomOAuth2SuccessHandler (JwtService jwtService) {
+        this.jwtService = jwtService;
+    }
+
+    @Override
+    public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication)
+            throws IOException, ServletException {
+
+        OAuth2User user = (OAuth2User) authentication.getPrincipal();
+        String email = user.getAttribute("email");
+        String name = user.getAttribute("name");
+        OAuth2AuthenticationToken oauthToken = (OAuth2AuthenticationToken) authentication;
+        String provider = oauthToken.getAuthorizedClientRegistrationId();
+        if (provider.equals("github")){
+            String username = user.getAttribute("login");
+            email = username;
+            name = username;
+        }
+        String token = jwtService.generateToken(email,name ,provider );
+        Cookie jwtCookie = new Cookie("auth_jwt", token);
+        jwtCookie.setHttpOnly(true);
+        jwtCookie.setSecure(false);
+        jwtCookie.setPath("/");
+        jwtCookie.setMaxAge(60 * 60 * 24);
+        response.addCookie(jwtCookie);
+        response.sendRedirect("http://localhost:3000/login");
+    }
+
+
+}
