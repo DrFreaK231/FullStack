@@ -1,0 +1,71 @@
+version: '3.9'
+
+services:
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      SA_PASSWORD: "${SA_PASSWORD}"
+      ACCEPT_EULA: "Y"
+    networks:
+      - backend
+    deploy:
+      replicas: 1
+
+  as:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.as
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:sqlserver://mssql:1433;databaseName=AuthServer;encrypt=true;trustServerCertificate=true"
+      SPRING_DATASOURCE_USERNAME: "${DB_USER}"
+      SPRING_DATASOURCE_PASSWORD: "${DB_PASS}"
+    networks:
+      - backend
+    ports:
+      - "8000:8000"
+    deploy:
+      replicas: 1
+
+  rss:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.rss
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:sqlserver://mssql:1433;databaseName=Ecommerce;encrypt=true;trustServerCertificate=true"
+      SPRING_DATASOURCE_USERNAME: "${DB_USER}"
+      SPRING_DATASOURCE_PASSWORD: "${DB_PASS}"
+    networks:
+      - backend
+    ports:
+      - "9000:9000"
+    deploy:
+      replicas: 1
+
+  client:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.client
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:sqlserver://mssql:1433;databaseName=Cache;encrypt=true;trustServerCertificate=true"
+      SPRING_DATASOURCE_USERNAME: "${DB_USER}"
+      SPRING_DATASOURCE_PASSWORD: "${DB_PASS}"
+    networks:
+      - backend
+    ports:
+      - "8080:8080"
+    deploy:
+      replicas: 1
+
+  frontend:
+    build:
+      context: frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    networks:
+      - backend
+    ports:
+      - "3000:3000"
+    deploy:
+      replicas: 1
+
+networks:
+  backend:

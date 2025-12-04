@@ -1,0 +1,71 @@
+version: '3.9'
+
+services:
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: mssql
+    environment:
+      SA_PASSWORD: "t@yza2004"
+      ACCEPT_EULA: "Y"
+    ports:
+      - "1433:1433"
+    volumes:
+      - mssql-data:/var/opt/mssql
+
+  as:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.as
+    ports:
+      - "8000:8000"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:sqlserver://mssql:1433;databaseName=AuthServer;encrypt=true;trustServerCertificate=true
+      - SPRING_DATASOURCE_USERNAME=sa
+      - SPRING_DATASOURCE_PASSWORD=t@yza2004
+    depends_on:
+      - mssql
+
+  rss:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.rss
+    ports:
+      - "9000:9000"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:sqlserver://mssql:1433;databaseName=Ecommerce;encrypt=true;trustServerCertificate=true
+      - SPRING_DATASOURCE_USERNAME=sa
+      - SPRING_DATASOURCE_PASSWORD=t@yza2004
+    depends_on:
+      - mssql
+      - as
+
+  client:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.client
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:sqlserver://mssql:1433;databaseName=Cache;encrypt=true;trustServerCertificate=true
+      - SPRING_DATASOURCE_USERNAME=sa
+      - SPRING_DATASOURCE_PASSWORD=t@yza2004
+    depends_on:
+      - mssql
+      - as
+      - rss
+
+  frontend:
+    build:
+      context: frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_RSS_URL=http://localhost:9000/api
+      - NEXT_PUBLIC_CLIENT_URL=http://localhost:8080
+    depends_on:
+      - client
+      - rss
+
+volumes:
+  mssql-data:
